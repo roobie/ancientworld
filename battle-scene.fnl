@@ -4,8 +4,13 @@
       sin (. math :sin)
       floor (. math :floor)
       min (. math :min)
+      pi (. math :pi)
+      pi/2 (/ pi 2)
+      tau (* pi 2)
 
       view (require :fennelview)
+
+      component-size 3
 
       gra love.graphics
       module {}]
@@ -68,25 +73,58 @@
           ftx (floor target-x)
           fty (floor target-y)]
       (when (and (= fx ftx) (= fy fty))
-        (tset actor :move-target (random-visible-point)))))
+        (tset actor :move-target (random-visible-point)))
+      ;; (each [_ component (ipairs (. actor :components))])
+      ))
 
   (fn processor-renderer [actor]
     (let [position (. actor :position)
           [x y] position
           [target-x target-y] (. actor :move-target)
           ]
-      (gra.setColor 1 0 0 1)
-      (gra.circle "fill" x y 3)
-      (gra.setColor 0.5 0.5 0.5 0.5)
-      (gra.line x y target-x target-y)
-      ))
+      (each [_ component (ipairs (. actor :components))]
+        (let [[cx cy] (. component :position)
+              color (. component :color)]
+        (gra.setColor (unpack color))
+        (gra.circle "fill" (+ x cx) (+ y cy) component-size)
+        ;; (gra.setColor 0.5 0.5 0.5 0.5)
+        ;; (gra.line x y target-x target-y)
+        ))))
+
+  (fn add-unit [actors]
+    ; a legion century
+    (var century-components [])
+    (var orientation (/ tau 3))
+    (var century {:id "century-1"
+                  :position [100 100]
+                  :move-target [400 400]
+                  :base-speed 0.95
+                  :components century-components
+                  :orientation orientation})
+
+    (let [spacing (* 3 component-size)
+          rx (cos orientation)
+          ry (sin orientation)]
+      (for [i 0 20]
+        (let [x (* rx spacing i)
+              y (* ry spacing i)]
+        (table.insert century-components
+                      {:position [x y]
+                       :color [1 0 0 1]})))
+      (for [i 0 20]
+        (let [x (- (* rx spacing i)
+                   (* spacing (cos (- orientation pi/2))))
+              y (- (* ry spacing i)
+                   (* spacing (sin (- orientation pi/2))))]
+          (table.insert century-components
+                        {:position [x y]
+                         :color [0 1 0 1]})))
+      )
+    (table.insert actors century))
 
   (fn module.create []
     (var actors [])
-    (for [i 1 100]
-      (table.insert actors {:position [0 0]
-                            :base-speed 0.05
-                            :move-target [5 5]}))
+    (add-unit actors)
     (fn battle-scene-update [dt]
       (for [i 1 (length actors)]
         (processor-mover (. actors i))
